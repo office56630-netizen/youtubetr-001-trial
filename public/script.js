@@ -1,12 +1,13 @@
 let player;
-let history = []; 
-let historyIndex = -1; 
-let currentVideo = null; 
+let history = [];
+let historyIndex = -1;
+let currentVideo = null;
 let repeatMode = 0; // 0=off, 1=all, 2=one
 let shuffle = false;
 let updateSeek;
 let videoMode = false;
-let userHasInteracted = false; // NEW: track first user gesture
+let userHasInteracted = false; // track first user gesture
+let preventReload = true;      // for beforeunload
 
 // DOM Elements
 const thumbnail = document.getElementById("thumbnail");
@@ -27,17 +28,17 @@ const closeVideoBtn = document.getElementById("closeVideoBtn");
 // 1. YOUTUBE API SETUP
 function onYouTubeIframeAPIReady() {
     player = new YT.Player("player", {
-        height: "100%", 
-        width: "100%", 
+        height: "100%",
+        width: "100%",
         videoId: "",
-        playerVars: { 
-            playsinline: 1, 
-            autoplay: 0, // CHANGED: do not autoplay on load
-            controls: 0, 
+        playerVars: {
+            playsinline: 1,
+            autoplay: 0, // do NOT autoplay on load (Chrome policy)
+            controls: 0,
             disablekb: 1,
             origin: window.location.origin
         },
-        events: { 
+        events: {
             onStateChange: onPlayerStateChange,
             onReady: onPlayerReady,
             onError: onPlayerError
@@ -45,7 +46,7 @@ function onYouTubeIframeAPIReady() {
     });
 }
 
-function onPlayerReady(event) {
+function onPlayerReady() {
     player.setVolume(volumeSlider.value);
 }
 
@@ -56,14 +57,26 @@ function onPlayerError(e) {
 
 // 2. AUTOPLAY & UI UPDATE LOGIC
 function onPlayerStateChange(event) {
+    console.log("Player state:", event.data, "historyIndex:", historyIndex);
+
     if (event.data === YT.PlayerState.ENDED) {
-        if (repeatMode === 2) {
-            player.playVideo(); 
-        } else {
-            nextTrack(); 
+        // only chain autoplay if user interacted at least once
+        if (!userHasInteracted) {
+            console.warn("Autoplay blocked: no user interaction yet");
+            return;
         }
-    } 
-    
+
+        if (repeatMode === 2) {
+            const p = player.playVideo();
+            if (p && typeof p.then === "function") {
+                p.catch(err => console.warn("Repeat one failed:", err));
+            }
+        } else {
+            console.log("Trying to go to nextTrack()");
+            nextTrack();
+        }
+    }
+
     if (event.data === YT.PlayerState.PLAYING) {
         playPauseBtn.textContent = "⏸";
         startUpdatingUI();
@@ -75,36 +88,40 @@ function onPlayerStateChange(event) {
 
 // 3. CORE PLAYBACK ENGINE
 function playVideo(video, updateHistory = true) {
+    console.log("playVideo()", video);
+
     currentVideo = video;
-    
+
     if (updateHistory) {
         if (history.length === 0 || history[historyIndex]?.videoId !== video.videoId) {
             history.push(video);
             historyIndex = history.length - 1;
         }
-    } 
-    
-    // Only load the new video; actual play is triggered from a user gesture
+    }
+
     player.loadVideoById(video.videoId);
 
-    // If the user has already interacted once, we can auto‑play safely in Chrome
+    // If user already interacted, attempt autoplay next
     if (userHasInteracted) {
-        player.playVideo();
+        const p = player.playVideo();
+        if (p && typeof p.then === "function") {
+            p.catch(err => console.warn("Autoplay next failed:", err));
+        }
     }
 
     // Update UI
     currentTitle.textContent = video.title;
-    thumbnail.src = `https://img.youtube.com/vi/${video.videoId}/mqdefault.jpg`; 
-    
-    // Media Session API (Lockscreen Controls)
-    if ('mediaSession' in navigator) {
+    thumbnail.src = `https://img.youtube.com/vi/${video.videoId}/mqdefault.jpg`;
+
+    // Media Session API
+    if ("mediaSession" in navigator) {
         navigator.mediaSession.metadata = new MediaMetadata({
             title: video.title,
-            artist: 'YouTube Music Finder',
+            artist: "YouTube Music Finder",
             artwork: [{
                 src: `https://img.youtube.com/vi/${video.videoId}/hqdefault.jpg`,
-                sizes: '480x360',
-                type: 'image/jpeg'
+                sizes: "480x360",
+                type: "image/jpeg"
             }]
         });
         setupMediaActions();
@@ -115,15 +132,21 @@ function playVideo(video, updateHistory = true) {
 
 // 4. NAVIGATION
 function nextTrack() {
-    if (history.length === 0) return;
+    if (history.length === 0) {
+        console.warn("No history; cannot autoplay next");
+        return;
+    }
+
     let nextIndex = historyIndex;
     if (shuffle) {
-        do { 
-            nextIndex = Math.floor(Math.random() * history.length); 
+        do {
+            nextIndex = Math.floor(Math.random() * history.length);
         } while (history.length > 1 && nextIndex === historyIndex);
     } else {
         nextIndex = (historyIndex + 1) % history.length;
     }
+
+    console.log("Autoplay next index:", nextIndex);
     historyIndex = nextIndex;
     playVideo(history[historyIndex], false);
 }
@@ -146,10 +169,13 @@ document.getElementById("searchBtn").onclick = async () => {
         data.forEach(item => {
             const li = document.createElement("li");
             li.textContent = item.title;
-            li.onclick = () => playVideo({ videoId: item.videoId, title: item.title }); 
+            li.onclick = () =>
+                playVideo({ videoId: item.videoId, title: item.title });
             resultsList.appendChild(li);
         });
-    } catch (e) { console.error("Search failed", e); }
+    } catch (e) {
+        console.error("Search failed", e);
+    }
 };
 
 function renderHistory() {
@@ -158,9 +184,9 @@ function renderHistory() {
         const li = document.createElement("li");
         li.textContent = video.title;
         if (idx === historyIndex) li.classList.add("playing");
-        li.onclick = () => { 
-            historyIndex = idx; 
-            playVideo(video, false); 
+        li.onclick = () => {
+            historyIndex = idx;
+            playVideo(video, false);
         };
         historyEl.appendChild(li);
     });
@@ -168,20 +194,23 @@ function renderHistory() {
 
 // 6. CONTROLS & HELPERS
 function setupMediaActions() {
-    navigator.mediaSession.setActionHandler('play', () => player.playVideo());
-    navigator.mediaSession.setActionHandler('pause', () => player.pauseVideo());
-    navigator.mediaSession.setActionHandler('previoustrack', prevTrack);
-    navigator.mediaSession.setActionHandler('nexttrack', nextTrack);
+    navigator.mediaSession.setActionHandler("play", () => player.playVideo());
+    navigator.mediaSession.setActionHandler("pause", () => player.pauseVideo());
+    navigator.mediaSession.setActionHandler("previoustrack", prevTrack);
+    navigator.mediaSession.setActionHandler("nexttrack", nextTrack);
 }
 
-// Main play/pause button — this is the primary user gesture for Chrome
+// Main play/pause button — primary user gesture for Chrome autoplay
 playPauseBtn.onclick = () => {
-    userHasInteracted = true; // mark that user granted permission for sound
+    userHasInteracted = true;
     const state = player.getPlayerState();
-    if (state === YT.PlayerState.PLAYING) {
-        player.pauseVideo();
-    } else {
-        player.playVideo();
+    const p =
+        state === YT.PlayerState.PLAYING
+            ? player.pauseVideo()
+            : player.playVideo();
+
+    if (p && typeof p.then === "function") {
+        p.catch(err => console.warn("Initial play blocked:", err));
     }
 };
 
@@ -201,7 +230,9 @@ closeVideoBtn.onclick = () => toggleVideoMode(false);
 
 function toggleVideoMode(val) {
     videoMode = val;
-    document.getElementById("player-wrapper").classList.toggle("active", videoMode);
+    document
+        .getElementById("player-wrapper")
+        .classList.toggle("active", videoMode);
     modeSwitchBtn.textContent = videoMode ? "🎧" : "🎥";
 }
 
@@ -209,7 +240,7 @@ function formatTime(seconds) {
     if (!seconds) return "0:00";
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
 }
 
 function startUpdatingUI() {
@@ -225,21 +256,25 @@ function startUpdatingUI() {
     }, 1000);
 }
 
-function stopUpdatingUI() { 
-    clearInterval(updateSeek); 
+function stopUpdatingUI() {
+    clearInterval(updateSeek);
 }
 
-seekbar.oninput = () => 
+// Seek & volume
+seekbar.oninput = () =>
     player.seekTo((seekbar.value / 100) * player.getDuration(), true);
 
-volumeSlider.oninput = () => 
-    player.setVolume(volumeSlider.value);
+volumeSlider.oninput = () => player.setVolume(volumeSlider.value);
 
 nextBtn.onclick = nextTrack;
 prevBtn.onclick = prevTrack;
 
-// Remove the old "body click autoplay" pattern.
-// Chrome wants an explicit user gesture tied to play() anyway. [web:10][web:16]
-// document.body.addEventListener('click', () => {
-//     if (player && player.getPlayerState() === YT.PlayerState.UNSTARTED) player.playVideo();
-// }, { once: true });
+// 7. RELOAD / CLOSE PREVENTION
+window.addEventListener("beforeunload", function (event) {
+    if (!preventReload) return;
+    if (!player || player.getPlayerState() !== YT.PlayerState.PLAYING) return;
+
+    // Trigger native confirm dialog so user can cancel reload/close
+    event.preventDefault();
+    event.returnValue = "";
+});
