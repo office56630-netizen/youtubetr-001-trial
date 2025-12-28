@@ -58,7 +58,7 @@ h1 {
     justify-content: center;
     gap: 15px;
     margin-bottom: 15px;
-    flex-wrap: wrap; /* Ensure buttons wrap on smaller screens */
+    flex-wrap: wrap;
 }
 
 .player-controls button {
@@ -94,7 +94,7 @@ h1 {
     margin-top: 5px;
 }
 
-/* Style for the switch button */
+/* Switch button */
 .switch-container {
     text-align: right;
     margin-bottom: 10px;
@@ -113,12 +113,12 @@ h1 {
     background: #2c4242;
 }
 
-/* --- Search Section --- */
+/* Search Section */
 .search-section {
     display: flex;
     gap: 10px;
     margin-bottom: 30px;
-    flex-wrap: wrap; /* Wrap on small screens */
+    flex-wrap: wrap;
 }
 
 .search-section input {
@@ -139,12 +139,11 @@ h1 {
     transition: background 0.2s;
     flex: 0 0 auto;
 }
-
 .search-section button:hover {
     background: #2c4242;
 }
 
-/* --- Results and History Layout --- */
+/* Results & History */
 .results-history-container {
     display: flex;
     gap: 20px;
@@ -183,7 +182,6 @@ h1 {
     background: #cde0e0;
 }
 
-/* Style for the currently playing track in history */
 .history-list li.playing {
     background: #3b5a5a; 
     color: white; 
@@ -193,7 +191,7 @@ h1 {
     background: #2c4242;
 }
 
-/* --- Player Wrapper Styles (For video toggle) --- */
+/* Player wrapper */
 #player-wrapper {
     position: fixed;
     top: 0;
@@ -205,7 +203,6 @@ h1 {
     background: rgba(0, 0, 0, 0.9);
     transition: all 0.3s ease;
 }
-
 #player-wrapper.active {
     width: 100%;
     height: 100%;
@@ -213,20 +210,18 @@ h1 {
     justify-content: center;
     align-items: center;
 }
-
 #player {
     width: 80vw;
-    height: 45vw; /* 16:9 aspect ratio */
+    height: 45vw;
     max-width: 900px;
     max-height: 506px;
 }
 
-/* --- Media Queries for Responsiveness --- */
+/* Media Queries */
 @media (max-width: 992px) {
     .results-panel, .history-panel {
         max-height: 350px;
     }
-
     .player-controls img {
         width: 60px;
         height: 60px;
@@ -235,33 +230,27 @@ h1 {
 
 @media (max-width: 768px) {
     .container {
-        margin: 20px 10px; 
+        margin: 20px 10px;
     }
-
     .results-history-container {
         flex-direction: column;
         gap: 20px;
     }
-    
     .results-panel, .history-panel {
         max-height: 300px;
     }
-
     .player-controls {
         padding: 15px;
     }
-
     .player-controls .info {
         flex-direction: column; 
         text-align: center;
         gap: 10px;
     }
-
     .player-controls .buttons {
         justify-content: space-around; 
         gap: 5px;
     }
-    
     .search-section {
         flex-direction: column;
         gap: 15px;
@@ -269,10 +258,9 @@ h1 {
     .search-section button {
         width: 100%;
     }
-
     #player {
         width: 95vw;
-        height: 53.4375vw; /* keeps 16:9 ratio */
+        height: 53.4375vw;
     }
 }
 
@@ -281,16 +269,13 @@ h1 {
         font-size: 16px;
         padding: 8px 12px;
     }
-
     #currentTitle {
         font-size: 1em;
     }
-
     .player-controls img {
         width: 50px;
         height: 50px;
     }
-
     #player {
         width: 100vw;
         height: 56.25vw;
