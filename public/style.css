@@ -58,6 +58,7 @@ h1 {
     justify-content: center;
     gap: 15px;
     margin-bottom: 15px;
+    flex-wrap: wrap; /* Ensure buttons wrap on smaller screens */
 }
 
 .player-controls button {
@@ -85,6 +86,7 @@ h1 {
     cursor: pointer;
     accent-color: #3b5a5a;
 }
+
 .player-controls label {
     font-size: 0.9em;
     color: #3b5a5a;
@@ -116,10 +118,11 @@ h1 {
     display: flex;
     gap: 10px;
     margin-bottom: 30px;
+    flex-wrap: wrap; /* Wrap on small screens */
 }
 
 .search-section input {
-    flex: 1;
+    flex: 1 1 200px;
     padding: 12px;
     border-radius: 8px;
     border: 1px solid #b0c4c4;
@@ -134,6 +137,7 @@ h1 {
     color: white;
     cursor: pointer;
     transition: background 0.2s;
+    flex: 0 0 auto;
 }
 
 .search-section button:hover {
@@ -144,15 +148,17 @@ h1 {
 .results-history-container {
     display: flex;
     gap: 20px;
+    flex-wrap: wrap;
 }
 
 .results-panel, .history-panel {
-    flex: 1;
+    flex: 1 1 300px;
     background: #e1f0f0;
     padding: 15px;
     border-radius: 12px;
     max-height: 400px;
     overflow-y: auto;
+    min-width: 250px;
 }
 
 .results-list, .history-list {
@@ -215,13 +221,23 @@ h1 {
     max-height: 506px;
 }
 
-
 /* --- Media Queries for Responsiveness --- */
+@media (max-width: 992px) {
+    .results-panel, .history-panel {
+        max-height: 350px;
+    }
+
+    .player-controls img {
+        width: 60px;
+        height: 60px;
+    }
+}
+
 @media (max-width: 768px) {
     .container {
         margin: 20px 10px; 
     }
-    
+
     .results-history-container {
         flex-direction: column;
         gap: 20px;
@@ -241,11 +257,6 @@ h1 {
         gap: 10px;
     }
 
-    .player-controls img {
-        width: 80px; 
-        height: 80px;
-    }
-
     .player-controls .buttons {
         justify-content: space-around; 
         gap: 5px;
@@ -258,9 +269,30 @@ h1 {
     .search-section button {
         width: 100%;
     }
-    
+
     #player {
         width: 95vw;
-        height: 53.4375vw;
+        height: 53.4375vw; /* keeps 16:9 ratio */
+    }
+}
+
+@media (max-width: 480px) {
+    .player-controls button {
+        font-size: 16px;
+        padding: 8px 12px;
+    }
+
+    #currentTitle {
+        font-size: 1em;
+    }
+
+    .player-controls img {
+        width: 50px;
+        height: 50px;
+    }
+
+    #player {
+        width: 100vw;
+        height: 56.25vw;
     }
 }
