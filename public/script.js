@@ -16,30 +16,42 @@ const playPauseBtn = document.getElementById("playPauseBtn");
 const shuffleBtn = document.getElementById("shuffleBtn");
 const repeatBtn = document.getElementById("repeatBtn");
 const modeSwitchBtn = document.getElementById("modeSwitchBtn");
-const nextBtn = document.getElementById("nextBtn"); // Added for clarity
-const prevBtn = document.getElementById("prevBtn"); // Added for clarity
+const nextBtn = document.getElementById("nextBtn");
+const prevBtn = document.getElementById("prevBtn");
 const historyEl = document.getElementById("historyList");
 
 // ---------------------------
-// YouTube API
+// 1. YouTube API Setup
 // ---------------------------
 function onYouTubeIframeAPIReady() {
     player = new YT.Player("player", {
         height: "100%", 
         width: "100%", 
         videoId: "",
-        playerVars: { playsinline: 1 },
-        events: { onStateChange: onPlayerStateChange }
+        playerVars: { 
+            playsinline: 1,
+            autoplay: 1, // Automatic playback enabled
+            controls: 0,  // Use our custom UI instead
+            rel: 0
+        },
+        events: { 
+            onStateChange: onPlayerStateChange,
+            onReady: (event) => {
+                event.target.setVolume(volumeSlider.value);
+            }
+        }
     });
-    player.setVolume(volumeSlider.value);
 }
 
+// ---------------------------
+// 2. Autoplay & State Logic
+// ---------------------------
 function onPlayerStateChange(event) {
     if (event.data === YT.PlayerState.ENDED) {
         if (repeatMode === 2) {
-            player.playVideo(); // Repeat current track
+            player.playVideo(); // Repeat ONE
         } else {
-            nextTrack(); // Move to the next track
+            nextTrack(); // Autoplay NEXT
         }
     } else if (event.data === YT.PlayerState.PLAYING) {
         playPauseBtn.textContent = "⏸";
@@ -51,38 +63,13 @@ function onPlayerStateChange(event) {
 }
 
 // ---------------------------
-// Search YouTube (No Change)
-// ---------------------------
-document.getElementById("searchBtn").onclick = async () => {
-    const query = document.getElementById("searchInput").value;
-    if (!query) return;
-
-    try {
-        const res = await fetch(`/search?q=${encodeURIComponent(query)}`);
-        const data = await res.json();
-
-        const resultsList = document.getElementById("resultsList");
-        resultsList.innerHTML = "";
-
-        data.forEach(item => {
-            const li = document.createElement("li");
-            li.textContent = item.title;
-            // When clicking a search result, we play it and update history
-            li.onclick = () => playVideo({videoId: item.videoId, title: item.title}); 
-            resultsList.appendChild(li);
-        });
-    } catch (error) {
-        console.error("Search failed:", error);
-    }
-};
-
-// ---------------------------
-// Play Video 
+// 3. Play Video Engine
 // ---------------------------
 function playVideo(video, updateHistory = true) {
     currentVideo = video;
     
     if (updateHistory) {
+        // Prevent duplicate consecutive entries in history
         if (history.length === 0 || history[history.length - 1].videoId !== video.videoId) {
             history.push(video);
             historyIndex = history.length - 1;
@@ -94,48 +81,20 @@ function playVideo(video, updateHistory = true) {
     player.loadVideoById(video.videoId);
     player.playVideo(); 
 
-    // Update UI immediately
-    playPauseBtn.textContent = "⏸"; 
-    player.setVolume(volumeSlider.value);
+    // Instant UI Updates
+    playPauseBtn.textContent = "⏸";
     currentTitle.textContent = video.title;
     thumbnail.src = `https://img.youtube.com/vi/${video.videoId}/mqdefault.jpg`; 
     
     renderHistory();
     updateSeekbar();
 }
-// ---------------------------
-// History (No Change)
-// ---------------------------
-function renderHistory() {
-    historyEl.innerHTML = "";
-    history.forEach((video, idx) => {
-        const li = document.createElement("li");
-        li.textContent = video.title;
-        // When clicking history, play the video and set the index, but DO NOT update history array itself
-        li.onclick = () => {
-            historyIndex = idx;
-            playVideo(video, false); 
-        } 
-        
-        // Highlight current playing track in history
-        if (idx === historyIndex) {
-            li.classList.add("playing");
-        } else {
-            li.classList.remove("playing");
-        }
-
-        historyEl.appendChild(li);
-    });
-}
 
 // ---------------------------
-// Navigation Logic (FIXED)
+// 4. Navigation (Next/Prev)
 // ---------------------------
-
-// Link buttons to functions
 nextBtn.onclick = nextTrack;
 prevBtn.onclick = prevTrack;
-
 
 function nextTrack() {
     if (history.length === 0) return;
@@ -143,62 +102,80 @@ function nextTrack() {
     let nextIndex = historyIndex;
 
     if (shuffle) {
-        // Shuffle logic: pick a random index
+        // Pick random, but not the same one
         do {
             nextIndex = Math.floor(Math.random() * history.length);
         } while (history.length > 1 && nextIndex === historyIndex);
-        
     } else {
-        // Standard forward logic
         nextIndex++;
+        // Loop back to start if at the end (Background Music behavior)
         if (nextIndex >= history.length) {
-            if (repeatMode === 1) {
-                nextIndex = 0; // Repeat all: loop to the start
-            } else {
-                return; // Stop playback
-            }
+            nextIndex = 0; 
         }
     }
     
     historyIndex = nextIndex;
-    playVideo(history[historyIndex], false); // Play the track without re-adding to history
+    playVideo(history[historyIndex], false);
 }
-
 
 function prevTrack() {
     if (history.length === 0) return;
 
     let prevIndex = historyIndex;
+    prevIndex--;
 
-    if (prevIndex > 0) {
-        prevIndex--;
-    } else if (prevIndex === 0) {
-        if (repeatMode === 1) {
-            prevIndex = history.length - 1; // Repeat all: loop to the end
-        } else {
-            return; // Stay on the first track
-        }
-    } else {
-        return; // Should only happen if history is empty
+    if (prevIndex < 0) {
+        prevIndex = history.length - 1; // Loop to end
     }
     
     historyIndex = prevIndex;
-    playVideo(history[historyIndex], false); // Play the track without re-adding to history
+    playVideo(history[historyIndex], false);
 }
 
+// ---------------------------
+// 5. Search & History UI
+// ---------------------------
+document.getElementById("searchBtn").onclick = async () => {
+    const query = document.getElementById("searchInput").value;
+    if (!query) return;
+
+    try {
+        const res = await fetch(`/search?q=${encodeURIComponent(query)}`);
+        const data = await res.json();
+        const resultsList = document.getElementById("resultsList");
+        resultsList.innerHTML = "";
+
+        data.forEach(item => {
+            const li = document.createElement("li");
+            li.textContent = item.title;
+            li.onclick = () => playVideo({videoId: item.videoId, title: item.title}); 
+            resultsList.appendChild(li);
+        });
+    } catch (error) {
+        console.error("Search failed:", error);
+    }
+};
+
+function renderHistory() {
+    historyEl.innerHTML = "";
+    history.forEach((video, idx) => {
+        const li = document.createElement("li");
+        li.textContent = video.title;
+        li.className = (idx === historyIndex) ? "playing" : "";
+        li.onclick = () => {
+            historyIndex = idx;
+            playVideo(video, false); 
+        };
+        historyEl.appendChild(li);
+    });
+}
 
 // ---------------------------
-// Controls (No Change)
+// 6. Controls & Modes
 // ---------------------------
-// ... (playPauseBtn, shuffleBtn, repeatBtn logic remains the same)
-
 playPauseBtn.onclick = () => {
     const state = player.getPlayerState();
-    if (state === YT.PlayerState.PLAYING) {
-        player.pauseVideo();
-    } else {
-        player.playVideo();
-    }
+    state === YT.PlayerState.PLAYING ? player.pauseVideo() : player.playVideo();
 };
 
 shuffleBtn.onclick = () => {
@@ -208,35 +185,30 @@ shuffleBtn.onclick = () => {
 
 repeatBtn.onclick = () => {
     repeatMode = (repeatMode + 1) % 3;
-    if (repeatMode === 0) {
-        repeatBtn.textContent = "🔁"; // off
-        repeatBtn.style.background = "";
-    } else if (repeatMode === 1) {
-        repeatBtn.textContent = "🔂"; // all
-        repeatBtn.style.background = "#3b5a5a";
-    } else if (repeatMode === 2) {
-        repeatBtn.textContent = "🔁1"; // one
-        repeatBtn.style.background = "#3b5a5a";
-    }
+    const icons = ["🔁", "🔂", "🔁1"];
+    repeatBtn.textContent = icons[repeatMode];
+    repeatBtn.style.background = repeatMode === 0 ? "" : "#3b5a5a";
+};
+
+modeSwitchBtn.onclick = () => {
+    videoMode = !videoMode;
+    const playerWrapper = document.getElementById("player-wrapper");
+    playerWrapper.classList.toggle("active", videoMode);
+    modeSwitchBtn.textContent = videoMode ? "🎧" : "🎥";
 };
 
 // ---------------------------
-// Seekbar & Volume (No Change)
+// 7. Utils (Seek/Volume/Security)
 // ---------------------------
 seekbar.oninput = () => {
-    if (!player || !player.getDuration) return;
     const duration = player.getDuration();
     player.seekTo((seekbar.value / 100) * duration, true);
 };
 
 volumeSlider.oninput = () => {
-    if (!player || !player.setVolume) return;
     player.setVolume(volumeSlider.value);
 };
 
-// ---------------------------
-// Update Seekbar (No Change)
-// ---------------------------
 function updateSeekbar() {
     clearInterval(updateSeek);
     updateSeek = setInterval(() => {
@@ -245,39 +217,13 @@ function updateSeekbar() {
             const current = player.getCurrentTime();
             seekbar.value = duration ? (current / duration) * 100 : 0;
         }
-    }, 500);
+    }, 1000);
 }
 
-// ---------------------------
-// Video/MP3 Mode Toggle Logic (No Change)
-// ---------------------------
-modeSwitchBtn.onclick = () => {
-    videoMode = !videoMode;
-    const playerWrapper = document.getElementById("player-wrapper");
-    
-    if (videoMode) {
-        playerWrapper.classList.add("active");
-        modeSwitchBtn.textContent = "🎧";
-        modeSwitchBtn.title = "Switch to MP3 Mode (Hide Video)";
-    } else {
-        playerWrapper.classList.remove("active");
-        modeSwitchBtn.textContent = "🎥";
-        modeSwitchBtn.title = "Switch to Video Mode (Show Video)";
-    }
-};
-
-// Initial setup
-if (history.length > 0) {
-    historyIndex = 0;
-    playVideo(history[historyIndex], false);
-    player.pauseVideo(); 
-}
-
+// Ask before reload if music is in queue
 window.addEventListener('beforeunload', (event) => {
-    // Only show the prompt if a video has been played or is in history
-    if (history.length > 0 || (player && player.getPlayerState() === YT.PlayerState.PLAYING)) {
-        // Standard procedure to trigger the browser's "Leave site?" dialog
+    if (history.length > 0) {
         event.preventDefault();
         event.returnValue = ''; 
     }
-})
+});
