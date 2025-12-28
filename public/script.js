@@ -270,11 +270,16 @@ nextBtn.onclick = nextTrack;
 prevBtn.onclick = prevTrack;
 
 // 7. RELOAD / CLOSE PREVENTION
-window.addEventListener("beforeunload", function (event) {
-    if (!preventReload) return;
-    if (!player || player.getPlayerState() !== YT.PlayerState.PLAYING) return;
+// Prevent accidental reload
 
-    // Trigger native confirm dialog so user can cancel reload/close
-    event.preventDefault();
-    event.returnValue = "";
+window.addEventListener('beforeunload', (event) => {
+
+    if (history.length > 0) {
+
+        event.preventDefault();
+
+        event.returnValue = ''; 
+
+    }
+
 });
