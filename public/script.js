@@ -10,6 +10,8 @@ let videoMode = false;
 // DOM Elements
 const thumbnail = document.getElementById("thumbnail");
 const currentTitle = document.getElementById("currentTitle");
+const currentTimeEl = document.getElementById("currentTime");
+const durationEl = document.getElementById("duration");
 const seekbar = document.getElementById("seekbar");
 const volumeSlider = document.getElementById("volumeSlider");
 const playPauseBtn = document.getElementById("playPauseBtn");
@@ -20,9 +22,7 @@ const nextBtn = document.getElementById("nextBtn");
 const prevBtn = document.getElementById("prevBtn");
 const historyEl = document.getElementById("historyList");
 
-// ---------------------------------------------------------
 // 1. YOUTUBE API SETUP
-// ---------------------------------------------------------
 function onYouTubeIframeAPIReady() {
     player = new YT.Player("player", {
         height: "100%", 
@@ -30,14 +30,15 @@ function onYouTubeIframeAPIReady() {
         videoId: "",
         playerVars: { 
             playsinline: 1, 
-            autoplay: 1,    // Enable autoplay
-            controls: 0,    // Hide YT controls to use ours
+            autoplay: 1, 
+            controls: 0, 
             disablekb: 1,
             origin: window.location.origin
         },
         events: { 
             onStateChange: onPlayerStateChange,
-            onReady: onPlayerReady
+            onReady: onPlayerReady,
+            onError: onPlayerError
         }
     });
 }
@@ -46,72 +47,62 @@ function onPlayerReady(event) {
     player.setVolume(volumeSlider.value);
 }
 
-// ---------------------------------------------------------
-// 2. THE AUTOPLAY NEXT LOGIC
-// ---------------------------------------------------------
+function onPlayerError(e) {
+    console.error("Playback error encountered. Skipping...", e.data);
+    nextTrack();
+}
+
+// 2. AUTOPLAY & UI UPDATE LOGIC
 function onPlayerStateChange(event) {
-    // When a song ends
     if (event.data === YT.PlayerState.ENDED) {
         if (repeatMode === 2) {
-            player.playVideo(); // Repeat One
+            player.playVideo(); 
         } else {
-            nextTrack(); // Autoplay Next
+            nextTrack(); 
         }
     } 
     
-    // UI Updates based on state
     if (event.data === YT.PlayerState.PLAYING) {
         playPauseBtn.textContent = "⏸";
-        updateSeekbar();
-    } else if (event.data === YT.PlayerState.PAUSED) {
+        startUpdatingUI();
+    } else {
         playPauseBtn.textContent = "▶️";
-        clearInterval(updateSeek);
+        stopUpdatingUI();
     }
 }
 
-// ---------------------------------------------------------
 // 3. CORE PLAYBACK ENGINE
-// ---------------------------------------------------------
 function playVideo(video, updateHistory = true) {
     currentVideo = video;
     
     if (updateHistory) {
-        if (history.length === 0 || history[history.length - 1].videoId !== video.videoId) {
+        if (history.length === 0 || history[historyIndex]?.videoId !== video.videoId) {
             history.push(video);
             historyIndex = history.length - 1;
         }
     } 
     
-    // loadVideoById triggers the autoplay
     player.loadVideoById(video.videoId);
     player.playVideo(); 
 
     // Visual Updates
-    playPauseBtn.textContent = "⏸";
     currentTitle.textContent = video.title;
     thumbnail.src = `https://img.youtube.com/vi/${video.videoId}/mqdefault.jpg`; 
     
     renderHistory();
-    updateSeekbar();
 }
 
-// ---------------------------------------------------------
-// 4. NAVIGATION & BACKGROUND FLOW
-// ---------------------------------------------------------
+// 4. NAVIGATION
 function nextTrack() {
     if (history.length === 0) return;
 
     let nextIndex = historyIndex;
-
     if (shuffle) {
         do {
             nextIndex = Math.floor(Math.random() * history.length);
         } while (history.length > 1 && nextIndex === historyIndex);
     } else {
-        nextIndex++;
-        if (nextIndex >= history.length) {
-            nextIndex = 0; // Loop back to start for continuous music
-        }
+        nextIndex = (historyIndex + 1) % history.length;
     }
     
     historyIndex = nextIndex;
@@ -120,20 +111,11 @@ function nextTrack() {
 
 function prevTrack() {
     if (history.length === 0) return;
-    let prevIndex = historyIndex - 1;
-    if (prevIndex < 0) prevIndex = history.length - 1;
-    
-    historyIndex = prevIndex;
+    historyIndex = (historyIndex - 1 + history.length) % history.length;
     playVideo(history[historyIndex], false);
 }
 
-// Button Hooks
-nextBtn.onclick = nextTrack;
-prevBtn.onclick = prevTrack;
-
-// ---------------------------------------------------------
 // 5. SEARCH & UI RENDERING
-// ---------------------------------------------------------
 document.getElementById("searchBtn").onclick = async () => {
     const query = document.getElementById("searchInput").value;
     if (!query) return;
@@ -169,77 +151,72 @@ function renderHistory() {
     });
 }
 
-// ---------------------------------------------------------
 // 6. CONTROLS
-// ---------------------------------------------------------
 playPauseBtn.onclick = () => {
     const state = player.getPlayerState();
-    if (state === YT.PlayerState.PLAYING) {
-        player.pauseVideo();
-    } else {
-        player.playVideo();
-    }
+    state === YT.PlayerState.PLAYING ? player.pauseVideo() : player.playVideo();
 };
 
 shuffleBtn.onclick = () => {
     shuffle = !shuffle;
-    shuffleBtn.style.background = shuffle ? "#3b5a5a" : "";
+    shuffleBtn.classList.toggle("active", shuffle);
 };
 
 repeatBtn.onclick = () => {
     repeatMode = (repeatMode + 1) % 3;
-    const icons = ["🔁", "🔂", "🔁1"]; // 0=Off, 1=All, 2=One
+    const icons = ["🔁", "🔂", "🔁1"];
     repeatBtn.textContent = icons[repeatMode];
-    repeatBtn.style.background = repeatMode === 0 ? "" : "#3b5a5a";
+    repeatBtn.classList.toggle("active", repeatMode !== 0);
 };
 
-modeSwitchBtn.onclick = () => {
-    videoMode = !videoMode;
-    const playerWrapper = document.getElementById("player-wrapper");
-    if (videoMode) {
-        playerWrapper.classList.add("active");
-        modeSwitchBtn.textContent = "🎧";
-    } else {
-        playerWrapper.classList.remove("active");
-        modeSwitchBtn.textContent = "🎥";
-    }
-};
+modeSwitchBtn.onclick = () => toggleVideoMode(!videoMode);
 
-// ---------------------------------------------------------
-// 7. UTILS & BROWSER SAFETY
-// ---------------------------------------------------------
-seekbar.oninput = () => {
-    const duration = player.getDuration();
-    player.seekTo((seekbar.value / 100) * duration, true);
-};
+function toggleVideoMode(val) {
+    videoMode = val;
+    const wrapper = document.getElementById("player-wrapper");
+    wrapper.classList.toggle("active", videoMode);
+    modeSwitchBtn.textContent = videoMode ? "🎧" : "🎥";
+}
 
-volumeSlider.oninput = () => {
-    player.setVolume(volumeSlider.value);
-};
+// 7. SEEKBAR & TIME HELPERS
+function formatTime(seconds) {
+    if (!seconds) return "0:00";
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+}
 
-function updateSeekbar() {
-    clearInterval(updateSeek);
+function startUpdatingUI() {
+    stopUpdatingUI();
     updateSeek = setInterval(() => {
-        if (player && player.getDuration && player.getPlayerState() === YT.PlayerState.PLAYING) {
-            const duration = player.getDuration();
+        if (player && player.getCurrentTime) {
             const current = player.getCurrentTime();
-            seekbar.value = duration ? (current / duration) * 100 : 0;
+            const total = player.getDuration();
+            seekbar.value = total ? (current / total) * 100 : 0;
+            currentTimeEl.textContent = formatTime(current);
+            durationEl.textContent = formatTime(total);
         }
     }, 1000);
 }
 
-// IMPORTANT: FIX FOR AUTOPLAY 
-// This listens for the first click on the page to "unlock" audio for the browser
+function stopUpdatingUI() {
+    clearInterval(updateSeek);
+}
+
+seekbar.oninput = () => {
+    const seekTo = (seekbar.value / 100) * player.getDuration();
+    player.seekTo(seekTo, true);
+};
+
+volumeSlider.oninput = () => player.setVolume(volumeSlider.value);
+
+// Event Listeners
+nextBtn.onclick = nextTrack;
+prevBtn.onclick = prevTrack;
+
+// Browser Autoplay Unlock
 document.body.addEventListener('click', () => {
     if (player && player.getPlayerState() === YT.PlayerState.UNSTARTED) {
         player.playVideo();
     }
 }, { once: true });
-
-// Prevent accidental reload
-window.addEventListener('beforeunload', (event) => {
-    if (history.length > 0) {
-        event.preventDefault();
-        event.returnValue = ''; 
-    }
-});
