@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>YouTube Music Finder</title>
-<link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Music Finder</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
@@ -13,11 +13,15 @@
 </header>
 
 <div class="container">
-
     <div class="player-controls">
         <div class="info">
-            <img id="thumbnail" src="" alt="Thumbnail">
-            <span id="currentTitle">No song playing</span>
+            <img id="thumbnail" src="https://via.placeholder.com/120x90?text=No+Media" alt="Thumbnail">
+            <div class="text-metadata">
+                <span id="currentTitle">No song playing</span>
+                <div class="time-info">
+                    <span id="currentTime">0:00</span> / <span id="duration">0:00</span>
+                </div>
+            </div>
         </div>
         
         <div class="switch-container">
@@ -25,15 +29,19 @@
         </div>
         
         <div class="buttons">
-            <button id="prevBtn">⏮</button>
-            <button id="playPauseBtn">▶️</button>
-            <button id="nextBtn">⏭</button>
-            <button id="shuffleBtn">🔀</button>
-            <button id="repeatBtn">🔁</button>
+            <button id="prevBtn" title="Previous">⏮</button>
+            <button id="playPauseBtn" title="Play/Pause">▶️</button>
+            <button id="nextBtn" title="Next">⏭</button>
+            <button id="shuffleBtn" title="Shuffle">🔀</button>
+            <button id="repeatBtn" title="Repeat Mode">🔁</button>
         </div>
+
         <input type="range" id="seekbar" min="0" max="100" value="0">
-        <label for="volumeSlider">Volume:</label>
-        <input type="range" id="volumeSlider" min="0" max="100" value="50">
+        
+        <div class="volume-container">
+            <label for="volumeSlider">🔊</label>
+            <input type="range" id="volumeSlider" min="0" max="100" value="50">
+        </div>
     </div>
     
     <div class="search-section">
@@ -43,20 +51,20 @@
 
     <div class="results-history-container">
         <div class="results-panel">
-            <h3>Search Results (Click to Play)</h3>
+            <h3>Search Results</h3>
             <ul id="resultsList" class="results-list"></ul>
         </div>
         
         <div class="history-panel">
-            <h3>History</h3>
+            <h3>History / Queue</h3>
             <ul id="historyList" class="history-list"></ul>
         </div>
     </div>
-    
 </div>
 
 <div id="player-wrapper">
     <div id="player"></div> 
+    <button id="closeVideoBtn" onclick="toggleVideoMode(false)">Close Video</button>
 </div>
 
 <script src="script.js"></script>
