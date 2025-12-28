@@ -21,6 +21,7 @@ const modeSwitchBtn = document.getElementById("modeSwitchBtn");
 const nextBtn = document.getElementById("nextBtn");
 const prevBtn = document.getElementById("prevBtn");
 const historyEl = document.getElementById("historyList");
+const closeVideoBtn = document.getElementById("closeVideoBtn");
 
 // 1. YOUTUBE API SETUP
 function onYouTubeIframeAPIReady() {
@@ -48,7 +49,7 @@ function onPlayerReady(event) {
 }
 
 function onPlayerError(e) {
-    console.error("Playback error encountered. Skipping...", e.data);
+    console.warn("Video restricted or error. Skipping...", e.data);
     nextTrack();
 }
 
@@ -85,26 +86,33 @@ function playVideo(video, updateHistory = true) {
     player.loadVideoById(video.videoId);
     player.playVideo(); 
 
-    // Visual Updates
+    // Update UI
     currentTitle.textContent = video.title;
     thumbnail.src = `https://img.youtube.com/vi/${video.videoId}/mqdefault.jpg`; 
     
+    // Media Session API (Lockscreen Controls)
+    if ('mediaSession' in navigator) {
+        navigator.mediaSession.metadata = new MediaMetadata({
+            title: video.title,
+            artist: 'YouTube Music Finder',
+            artwork: [{ src: `https://img.youtube.com/vi/${video.videoId}/hqdefault.jpg`, sizes: '480x360', type: 'image/jpeg' }]
+        });
+        setupMediaActions();
+    }
+
     renderHistory();
 }
 
 // 4. NAVIGATION
 function nextTrack() {
     if (history.length === 0) return;
-
     let nextIndex = historyIndex;
     if (shuffle) {
-        do {
-            nextIndex = Math.floor(Math.random() * history.length);
-        } while (history.length > 1 && nextIndex === historyIndex);
+        do { nextIndex = Math.floor(Math.random() * history.length); } 
+        while (history.length > 1 && nextIndex === historyIndex);
     } else {
         nextIndex = (historyIndex + 1) % history.length;
     }
-    
     historyIndex = nextIndex;
     playVideo(history[historyIndex], false);
 }
@@ -119,22 +127,18 @@ function prevTrack() {
 document.getElementById("searchBtn").onclick = async () => {
     const query = document.getElementById("searchInput").value;
     if (!query) return;
-
     try {
         const res = await fetch(`/search?q=${encodeURIComponent(query)}`);
         const data = await res.json();
         const resultsList = document.getElementById("resultsList");
         resultsList.innerHTML = "";
-
         data.forEach(item => {
             const li = document.createElement("li");
             li.textContent = item.title;
             li.onclick = () => playVideo({videoId: item.videoId, title: item.title}); 
             resultsList.appendChild(li);
         });
-    } catch (error) {
-        console.error("Search failed:", error);
-    }
+    } catch (e) { console.error("Search failed", e); }
 };
 
 function renderHistory() {
@@ -143,15 +147,19 @@ function renderHistory() {
         const li = document.createElement("li");
         li.textContent = video.title;
         if (idx === historyIndex) li.classList.add("playing");
-        li.onclick = () => {
-            historyIndex = idx;
-            playVideo(video, false); 
-        };
+        li.onclick = () => { historyIndex = idx; playVideo(video, false); };
         historyEl.appendChild(li);
     });
 }
 
-// 6. CONTROLS
+// 6. CONTROLS & HELPERS
+function setupMediaActions() {
+    navigator.mediaSession.setActionHandler('play', () => player.playVideo());
+    navigator.mediaSession.setActionHandler('pause', () => player.pauseVideo());
+    navigator.mediaSession.setActionHandler('previoustrack', prevTrack);
+    navigator.mediaSession.setActionHandler('nexttrack', nextTrack);
+}
+
 playPauseBtn.onclick = () => {
     const state = player.getPlayerState();
     state === YT.PlayerState.PLAYING ? player.pauseVideo() : player.playVideo();
@@ -164,21 +172,19 @@ shuffleBtn.onclick = () => {
 
 repeatBtn.onclick = () => {
     repeatMode = (repeatMode + 1) % 3;
-    const icons = ["🔁", "🔂", "🔁1"];
-    repeatBtn.textContent = icons[repeatMode];
+    repeatBtn.textContent = ["🔁", "🔂", "🔁1"][repeatMode];
     repeatBtn.classList.toggle("active", repeatMode !== 0);
 };
 
 modeSwitchBtn.onclick = () => toggleVideoMode(!videoMode);
+closeVideoBtn.onclick = () => toggleVideoMode(false);
 
 function toggleVideoMode(val) {
     videoMode = val;
-    const wrapper = document.getElementById("player-wrapper");
-    wrapper.classList.toggle("active", videoMode);
+    document.getElementById("player-wrapper").classList.toggle("active", videoMode);
     modeSwitchBtn.textContent = videoMode ? "🎧" : "🎥";
 }
 
-// 7. SEEKBAR & TIME HELPERS
 function formatTime(seconds) {
     if (!seconds) return "0:00";
     const mins = Math.floor(seconds / 60);
@@ -199,24 +205,13 @@ function startUpdatingUI() {
     }, 1000);
 }
 
-function stopUpdatingUI() {
-    clearInterval(updateSeek);
-}
+function stopUpdatingUI() { clearInterval(updateSeek); }
 
-seekbar.oninput = () => {
-    const seekTo = (seekbar.value / 100) * player.getDuration();
-    player.seekTo(seekTo, true);
-};
-
+seekbar.oninput = () => player.seekTo((seekbar.value / 100) * player.getDuration(), true);
 volumeSlider.oninput = () => player.setVolume(volumeSlider.value);
-
-// Event Listeners
 nextBtn.onclick = nextTrack;
 prevBtn.onclick = prevTrack;
 
-// Browser Autoplay Unlock
 document.body.addEventListener('click', () => {
-    if (player && player.getPlayerState() === YT.PlayerState.UNSTARTED) {
-        player.playVideo();
-    }
+    if (player && player.getPlayerState() === YT.PlayerState.UNSTARTED) player.playVideo();
 }, { once: true });
