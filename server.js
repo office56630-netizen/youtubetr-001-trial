@@ -1,10 +1,11 @@
 const express = require("express");
 const axios = require("axios");
 const cors = require("cors");
+const path = require("path");
 
 const app = express();
 app.use(cors());
-app.use(express.static("public"));
+app.use(express.static(path.join(__dirname, "public")));
 
 // YouTube Search Route
 app.get("/search", async (req, res) => {
@@ -18,7 +19,8 @@ app.get("/search", async (req, res) => {
     const html = response.data;
     const videoIds = [...html.matchAll(/"videoId":"(.*?)"/g)].map(v => v[1]);
     const titles = [...html.matchAll(/"title":\{"runs":\[{"text":"(.*?)"}/g)].map(t => t[1]);
-    let results = [];
+
+    const results = [];
     for (let i = 0; i < Math.min(videoIds.length, 10); i++) {
       results.push({
         videoId: videoIds[i],
@@ -33,4 +35,5 @@ app.get("/search", async (req, res) => {
   }
 });
 
-app.listen(3000, () => console.log("Server running on http://localhost:3000"));
+// Export the app for Vercel serverless function
+module.exports = app;
