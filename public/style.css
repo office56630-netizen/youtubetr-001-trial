@@ -1,0 +1,266 @@
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #f0f6f6;
+    color: #1f3b3b;
+    margin: 0;
+    padding: 0;
+}
+
+header {
+    text-align: center;
+    padding: 20px;
+    background: #d3e0e5;
+}
+
+h1 {
+    margin: 0;
+    color: #3b5a5a;
+}
+
+.container {
+    max-width: 900px;
+    margin: 30px auto;
+    padding: 0 20px;
+}
+
+/* --- Player Controls --- */
+.player-controls {
+    margin-bottom: 30px;
+    background: #d3e0e5;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.player-controls .info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.player-controls img {
+    width: 70px; 
+    height: 70px;
+    border-radius: 8px;
+    object-fit: cover;
+    background: #fff;
+}
+
+#currentTitle {
+    font-weight: bold;
+    color: #3b5a5a;
+    font-size: 1.1em;
+}
+
+.player-controls .buttons {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.player-controls button {
+    padding: 10px 18px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    background: #91b0b0;
+    color: white;
+    font-size: 18px;
+    transition: background 0.2s, transform 0.1s;
+}
+
+.player-controls button:hover {
+    background: #7a9c9c;
+}
+
+.player-controls button[style*="background"] {
+    background: #3b5a5a !important;
+}
+
+.player-controls input[type="range"] {
+    width: 100%;
+    margin-bottom: 5px;
+    cursor: pointer;
+    accent-color: #3b5a5a;
+}
+.player-controls label {
+    font-size: 0.9em;
+    color: #3b5a5a;
+    display: block;
+    margin-top: 5px;
+}
+
+/* Style for the switch button */
+.switch-container {
+    text-align: right;
+    margin-bottom: 10px;
+}
+#modeSwitchBtn {
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    background: #3b5a5a;
+    color: white;
+    font-size: 1.2em;
+    transition: background 0.2s;
+}
+#modeSwitchBtn:hover {
+    background: #2c4242;
+}
+
+/* --- Search Section --- */
+.search-section {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 30px;
+}
+
+.search-section input {
+    flex: 1;
+    padding: 12px;
+    border-radius: 8px;
+    border: 1px solid #b0c4c4;
+    font-size: 1em;
+}
+
+.search-section button {
+    padding: 10px 20px;
+    border-radius: 8px;
+    border: none;
+    background: #3b5a5a; 
+    color: white;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.search-section button:hover {
+    background: #2c4242;
+}
+
+/* --- Results and History Layout --- */
+.results-history-container {
+    display: flex;
+    gap: 20px;
+}
+
+.results-panel, .history-panel {
+    flex: 1;
+    background: #e1f0f0;
+    padding: 15px;
+    border-radius: 12px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.results-list, .history-list {
+    list-style: none;
+    padding: 0;
+}
+
+.results-list li, .history-list li {
+    padding: 10px;
+    margin-bottom: 8px;
+    background: #ffffff;
+    border-radius: 8px;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    overflow: hidden;
+    transition: background 0.2s;
+}
+
+.results-list li:hover, .history-list li:hover {
+    background: #cde0e0;
+}
+
+/* Style for the currently playing track in history */
+.history-list li.playing {
+    background: #3b5a5a; 
+    color: white; 
+    font-weight: bold;
+}
+.history-list li.playing:hover {
+    background: #2c4242;
+}
+
+/* --- Player Wrapper Styles (For video toggle) --- */
+#player-wrapper {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+    z-index: 1000;
+    background: rgba(0, 0, 0, 0.9);
+    transition: all 0.3s ease;
+}
+
+#player-wrapper.active {
+    width: 100%;
+    height: 100%;
+    display: flex; 
+    justify-content: center;
+    align-items: center;
+}
+
+#player {
+    width: 80vw;
+    height: 45vw; /* 16:9 aspect ratio */
+    max-width: 900px;
+    max-height: 506px;
+}
+
+
+/* --- Media Queries for Responsiveness --- */
+@media (max-width: 768px) {
+    .container {
+        margin: 20px 10px; 
+    }
+    
+    .results-history-container {
+        flex-direction: column;
+        gap: 20px;
+    }
+    
+    .results-panel, .history-panel {
+        max-height: 300px;
+    }
+
+    .player-controls {
+        padding: 15px;
+    }
+
+    .player-controls .info {
+        flex-direction: column; 
+        text-align: center;
+        gap: 10px;
+    }
+
+    .player-controls img {
+        width: 80px; 
+        height: 80px;
+    }
+
+    .player-controls .buttons {
+        justify-content: space-around; 
+        gap: 5px;
+    }
+    
+    .search-section {
+        flex-direction: column;
+        gap: 15px;
+    }
+    .search-section button {
+        width: 100%;
+    }
+    
+    #player {
+        width: 95vw;
+        height: 53.4375vw;
+    }
+}

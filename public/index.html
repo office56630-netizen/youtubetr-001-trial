@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>YouTube Music Finder</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+    <h1>YouTube Music Finder</h1>
+</header>
+
+<div class="container">
+
+    <div class="player-controls">
+        <div class="info">
+            <img id="thumbnail" src="" alt="Thumbnail">
+            <span id="currentTitle">No song playing</span>
+        </div>
+        
+        <div class="switch-container">
+            <button id="modeSwitchBtn" title="Toggle Video/MP3 Mode">🎥</button>
+        </div>
+        
+        <div class="buttons">
+            <button id="prevBtn">⏮</button>
+            <button id="playPauseBtn">▶️</button>
+            <button id="nextBtn">⏭</button>
+            <button id="shuffleBtn">🔀</button>
+            <button id="repeatBtn">🔁</button>
+        </div>
+        <input type="range" id="seekbar" min="0" max="100" value="0">
+        <label for="volumeSlider">Volume:</label>
+        <input type="range" id="volumeSlider" min="0" max="100" value="50">
+    </div>
+    
+    <div class="search-section">
+        <input type="text" id="searchInput" placeholder="Search YouTube for music...">
+        <button id="searchBtn">Search</button>
+    </div>
+
+    <div class="results-history-container">
+        <div class="results-panel">
+            <h3>Search Results (Click to Play)</h3>
+            <ul id="resultsList" class="results-list"></ul>
+        </div>
+        
+        <div class="history-panel">
+            <h3>History</h3>
+            <ul id="historyList" class="history-list"></ul>
+        </div>
+    </div>
+    
+</div>
+
+<div id="player-wrapper">
+    <div id="player"></div> 
+</div>
+
+<script src="script.js"></script>
+<script src="https://www.youtube.com/iframe_api"></script>
+</body>
+</html>
