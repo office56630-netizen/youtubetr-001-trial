@@ -1,7 +1,7 @@
 let player;
-let history = []; // Tracks all played videos
-let historyIndex = -1; // Index of the current video in the history array
-let currentVideo = null; // Current video object
+let history = []; 
+let historyIndex = -1; 
+let currentVideo = null; 
 let repeatMode = 0; // 0=off, 1=all, 2=one
 let shuffle = false;
 let updateSeek;
@@ -20,40 +20,47 @@ const nextBtn = document.getElementById("nextBtn");
 const prevBtn = document.getElementById("prevBtn");
 const historyEl = document.getElementById("historyList");
 
-// ---------------------------
-// 1. YouTube API Setup
-// ---------------------------
+// ---------------------------------------------------------
+// 1. YOUTUBE API SETUP
+// ---------------------------------------------------------
 function onYouTubeIframeAPIReady() {
     player = new YT.Player("player", {
         height: "100%", 
         width: "100%", 
         videoId: "",
         playerVars: { 
-            playsinline: 1,
-            autoplay: 1, // Automatic playback enabled
-            controls: 0,  // Use our custom UI instead
-            rel: 0
+            playsinline: 1, 
+            autoplay: 1,    // Enable autoplay
+            controls: 0,    // Hide YT controls to use ours
+            disablekb: 1,
+            origin: window.location.origin
         },
         events: { 
             onStateChange: onPlayerStateChange,
-            onReady: (event) => {
-                event.target.setVolume(volumeSlider.value);
-            }
+            onReady: onPlayerReady
         }
     });
 }
 
-// ---------------------------
-// 2. Autoplay & State Logic
-// ---------------------------
+function onPlayerReady(event) {
+    player.setVolume(volumeSlider.value);
+}
+
+// ---------------------------------------------------------
+// 2. THE AUTOPLAY NEXT LOGIC
+// ---------------------------------------------------------
 function onPlayerStateChange(event) {
+    // When a song ends
     if (event.data === YT.PlayerState.ENDED) {
         if (repeatMode === 2) {
-            player.playVideo(); // Repeat ONE
+            player.playVideo(); // Repeat One
         } else {
-            nextTrack(); // Autoplay NEXT
+            nextTrack(); // Autoplay Next
         }
-    } else if (event.data === YT.PlayerState.PLAYING) {
+    } 
+    
+    // UI Updates based on state
+    if (event.data === YT.PlayerState.PLAYING) {
         playPauseBtn.textContent = "⏸";
         updateSeekbar();
     } else if (event.data === YT.PlayerState.PAUSED) {
@@ -62,26 +69,24 @@ function onPlayerStateChange(event) {
     }
 }
 
-// ---------------------------
-// 3. Play Video Engine
-// ---------------------------
+// ---------------------------------------------------------
+// 3. CORE PLAYBACK ENGINE
+// ---------------------------------------------------------
 function playVideo(video, updateHistory = true) {
     currentVideo = video;
     
     if (updateHistory) {
-        // Prevent duplicate consecutive entries in history
         if (history.length === 0 || history[history.length - 1].videoId !== video.videoId) {
             history.push(video);
-            historyIndex = history.length - 1;
-        } else {
             historyIndex = history.length - 1;
         }
     } 
     
+    // loadVideoById triggers the autoplay
     player.loadVideoById(video.videoId);
     player.playVideo(); 
 
-    // Instant UI Updates
+    // Visual Updates
     playPauseBtn.textContent = "⏸";
     currentTitle.textContent = video.title;
     thumbnail.src = `https://img.youtube.com/vi/${video.videoId}/mqdefault.jpg`; 
@@ -90,27 +95,22 @@ function playVideo(video, updateHistory = true) {
     updateSeekbar();
 }
 
-// ---------------------------
-// 4. Navigation (Next/Prev)
-// ---------------------------
-nextBtn.onclick = nextTrack;
-prevBtn.onclick = prevTrack;
-
+// ---------------------------------------------------------
+// 4. NAVIGATION & BACKGROUND FLOW
+// ---------------------------------------------------------
 function nextTrack() {
     if (history.length === 0) return;
 
     let nextIndex = historyIndex;
 
     if (shuffle) {
-        // Pick random, but not the same one
         do {
             nextIndex = Math.floor(Math.random() * history.length);
         } while (history.length > 1 && nextIndex === historyIndex);
     } else {
         nextIndex++;
-        // Loop back to start if at the end (Background Music behavior)
         if (nextIndex >= history.length) {
-            nextIndex = 0; 
+            nextIndex = 0; // Loop back to start for continuous music
         }
     }
     
@@ -120,21 +120,20 @@ function nextTrack() {
 
 function prevTrack() {
     if (history.length === 0) return;
-
-    let prevIndex = historyIndex;
-    prevIndex--;
-
-    if (prevIndex < 0) {
-        prevIndex = history.length - 1; // Loop to end
-    }
+    let prevIndex = historyIndex - 1;
+    if (prevIndex < 0) prevIndex = history.length - 1;
     
     historyIndex = prevIndex;
     playVideo(history[historyIndex], false);
 }
 
-// ---------------------------
-// 5. Search & History UI
-// ---------------------------
+// Button Hooks
+nextBtn.onclick = nextTrack;
+prevBtn.onclick = prevTrack;
+
+// ---------------------------------------------------------
+// 5. SEARCH & UI RENDERING
+// ---------------------------------------------------------
 document.getElementById("searchBtn").onclick = async () => {
     const query = document.getElementById("searchInput").value;
     if (!query) return;
@@ -161,7 +160,7 @@ function renderHistory() {
     history.forEach((video, idx) => {
         const li = document.createElement("li");
         li.textContent = video.title;
-        li.className = (idx === historyIndex) ? "playing" : "";
+        if (idx === historyIndex) li.classList.add("playing");
         li.onclick = () => {
             historyIndex = idx;
             playVideo(video, false); 
@@ -170,12 +169,16 @@ function renderHistory() {
     });
 }
 
-// ---------------------------
-// 6. Controls & Modes
-// ---------------------------
+// ---------------------------------------------------------
+// 6. CONTROLS
+// ---------------------------------------------------------
 playPauseBtn.onclick = () => {
     const state = player.getPlayerState();
-    state === YT.PlayerState.PLAYING ? player.pauseVideo() : player.playVideo();
+    if (state === YT.PlayerState.PLAYING) {
+        player.pauseVideo();
+    } else {
+        player.playVideo();
+    }
 };
 
 shuffleBtn.onclick = () => {
@@ -185,7 +188,7 @@ shuffleBtn.onclick = () => {
 
 repeatBtn.onclick = () => {
     repeatMode = (repeatMode + 1) % 3;
-    const icons = ["🔁", "🔂", "🔁1"];
+    const icons = ["🔁", "🔂", "🔁1"]; // 0=Off, 1=All, 2=One
     repeatBtn.textContent = icons[repeatMode];
     repeatBtn.style.background = repeatMode === 0 ? "" : "#3b5a5a";
 };
@@ -193,13 +196,18 @@ repeatBtn.onclick = () => {
 modeSwitchBtn.onclick = () => {
     videoMode = !videoMode;
     const playerWrapper = document.getElementById("player-wrapper");
-    playerWrapper.classList.toggle("active", videoMode);
-    modeSwitchBtn.textContent = videoMode ? "🎧" : "🎥";
+    if (videoMode) {
+        playerWrapper.classList.add("active");
+        modeSwitchBtn.textContent = "🎧";
+    } else {
+        playerWrapper.classList.remove("active");
+        modeSwitchBtn.textContent = "🎥";
+    }
 };
 
-// ---------------------------
-// 7. Utils (Seek/Volume/Security)
-// ---------------------------
+// ---------------------------------------------------------
+// 7. UTILS & BROWSER SAFETY
+// ---------------------------------------------------------
 seekbar.oninput = () => {
     const duration = player.getDuration();
     player.seekTo((seekbar.value / 100) * duration, true);
@@ -220,7 +228,15 @@ function updateSeekbar() {
     }, 1000);
 }
 
-// Ask before reload if music is in queue
+// IMPORTANT: FIX FOR AUTOPLAY 
+// This listens for the first click on the page to "unlock" audio for the browser
+document.body.addEventListener('click', () => {
+    if (player && player.getPlayerState() === YT.PlayerState.UNSTARTED) {
+        player.playVideo();
+    }
+}, { once: true });
+
+// Prevent accidental reload
 window.addEventListener('beforeunload', (event) => {
     if (history.length > 0) {
         event.preventDefault();
